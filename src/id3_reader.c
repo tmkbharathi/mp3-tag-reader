@@ -116,6 +116,8 @@ Status update_id3_tags(const char *filepath, const TagUpdate *update) {
       strncpy(tag.comment, update->comment, 30);
     if (update->genre)
       tag.genre = (uint8_t)atoi(update->genre);
+    if (update->track)
+      printf("  Set Track (v2 only): %s\n", update->track);
 
     write_id3v1_tag(filepath, &tag);
     printf("  ID3v1 updated.\n");
@@ -126,7 +128,14 @@ Status update_id3_tags(const char *filepath, const TagUpdate *update) {
   if (v2_write == SUCCESS) {
     printf("  ID3v2 updated successfully.\n");
   } else {
-    printf("  Error updating ID3v2: %d\n", v2_write);
+    const char *err = "Unknown error";
+    if (v2_write == ERROR_FILE_OPEN)
+      err = "Could not open file (check if filename is correct)";
+    else if (v2_write == ERROR_MEM_ALLOC)
+      err = "Memory allocation failed";
+    else if (v2_write == ERROR_INVALID_FORMAT)
+      err = "Invalid ID3 format";
+    printf("  Error updating ID3v2: %s\n", err);
   }
 
   printf("----------------------------------------\n");

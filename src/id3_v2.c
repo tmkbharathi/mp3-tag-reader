@@ -137,8 +137,10 @@ Status read_id3v2_tag(const char *filepath, ID3v2_Content *content) {
           (frame_header[3] << 16) | (frame_header[4] << 8) | frame_header[5];
     } else {
       memcpy(frame_id, frame_header, 4);
-      frame_size = decode_int(&frame_header[4]); // v2.3 uses regular int
-      // Note: v2.4 uses synchsafe for frame size, but SRS excludes v2.4
+      if (major_version == 4)
+        frame_size = decode_synchsafe(&frame_header[4]);
+      else
+        frame_size = decode_int(&frame_header[4]);
     }
 
     if (frame_size <= 0 || (ftell(fp) + frame_size) > end_pos)
@@ -302,6 +304,7 @@ Status write_id3v2_tag(const char *filepath, const TagUpdate *update) {
   write_frame(fmem, "TALB", update->album ? update->album : content.album);
   write_frame(fmem, "TYER", update->year ? update->year : content.year);
   write_frame(fmem, "TCON", update->genre ? update->genre : content.genre);
+  write_frame(fmem, "TRCK", update->track ? update->track : content.track);
   write_frame(fmem, "COMM",
               update->comment ? update->comment : content.comment);
 

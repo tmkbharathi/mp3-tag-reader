@@ -8,7 +8,7 @@ ifeq ($(OS),Windows_NT)
     TARGET_EXT = .exe
     MKDIR = if not exist $(1) mkdir $(1)
     RM = if exist $(1) rmdir /s /q $(1)
-    BIN_NAME = mp3_tag_reader
+    BIN_NAME = mp3tag
 else
     # Linux/Mac settings
     CC = gcc

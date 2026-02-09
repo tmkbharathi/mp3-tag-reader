@@ -28,6 +28,7 @@ typedef struct {
   char *year;
   char *comment;
   char *genre;
+  char *track;
 } TagUpdate;
 
 typedef struct {

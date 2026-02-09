@@ -5,18 +5,17 @@
 #include <string.h>
 
 void print_help(const char *program_name) {
-  printf("Usage: %s [OPTIONS] <file.mp3>\n", program_name);
-  printf("Options:\n");
-  printf("  -t <title>    Modifies a Title tag\n");
-  printf("  -a <artist>   Modifies an Artist tag\n");
-  printf("  -A <album>    Modifies an Album tag\n");
-  printf("  -y <year>     Modifies a Year tag\n");
-  printf("  -c <comment>  Modifies a Comment tag\n");
-  printf("  -g <genre>    Modifies a Genre tag\n");
-  printf("  -d, --delete-tag      Removes all ID3 tags from the file\n");
-  printf("  -e, --extract-image   Extracts album art to 'album_art.jpg/png'\n");
-  printf("  -h, --help    Displays this help info\n");
-  printf("  -v            Prints version info\n");
+  printf("usage: %s -[tTaAycg] \"value\" file1\n", program_name);
+  printf("usage: %s -v\n", program_name);
+  printf("-t\tModifies a Title tag\n");
+  printf("-T\tModifies a Track tag\n");
+  printf("-a\tModifies an Artist tag\n");
+  printf("-A\tModifies an Album tag\n");
+  printf("-y\tModifies a Year tag\n");
+  printf("-c\tModifies a Comment tag\n");
+  printf("-g\tModifies a Genre tag\n");
+  printf("-h\tDisplays this help info\n");
+  printf("-v\tPrints version info\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -44,6 +43,7 @@ int main(int argc, char *argv[]) {
   char *year = NULL;
   char *comment = NULL;
   char *genre = NULL;
+  char *track = NULL;
 
   int extract_image = 0;
   int delete_tags = 0;
@@ -95,6 +95,9 @@ int main(int argc, char *argv[]) {
       case 'g':
         genre = value;
         break;
+      case 'T':
+        track = value;
+        break;
       default:
         printf("Unknown option: -%c\n", flag);
         print_help(argv[0]);
@@ -121,6 +124,7 @@ int main(int argc, char *argv[]) {
     update.year = year;
     update.comment = comment;
     update.genre = genre;
+    update.track = track;
 
     update_id3_tags(filepath, &update);
   } else if (delete_tags) {
