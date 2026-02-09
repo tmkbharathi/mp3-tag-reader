@@ -45,5 +45,32 @@ $(OBJ_DIR):
 clean:
 	$(call RM,$(OBJ_DIR))
 	$(call RM,$(BIN_DIR))
+	@if exist album_art.jpg del album_art.jpg
+	@if exist album_art.png del album_art.png
+	@if exist album_art.bin del album_art.bin
+	@if exist album_art.out del album_art.out
 
-.PHONY: all clean
+test: $(TARGET)
+	@echo ========================================
+	@echo   Running Automated Tests
+	@echo ========================================
+	@echo [1/3] Checking Version and Help...
+	@$(subst /,\,$(TARGET)) -v
+	@$(subst /,\,$(TARGET)) -h > nul
+	@echo [2/3] Checking Metadata Viewing...
+	@for %%f in (*.mp3) do @( \
+		echo Testing with file: %%f & \
+		$(subst /,\,$(TARGET)) "%%f" & \
+		echo [3/3] Testing Tag Update... & \
+		$(subst /,\,$(TARGET)) -t "Test Title" -a "Test Artist" "%%f" & \
+		($(subst /,\,$(TARGET)) "%%f" | findstr "Test Title" > nul && (echo   - Update: OK) || (echo   - Update: FAILED)) & \
+		echo Testing Image Extraction... & \
+		$(subst /,\,$(TARGET)) -e "%%f" & \
+		(if exist album_art.jpg (echo   - Extraction: OK) else if exist album_art.png (echo   - Extraction: OK) else if exist album_art.bin (echo   - Extraction: OK) else (echo   - Extraction: No image or failed)) & \
+		exit /b 0 \
+	)
+	@echo ========================================
+	@echo   Tests Completed.
+	@echo ========================================
+
+.PHONY: all clean test

@@ -18,5 +18,6 @@
 // Function to check if ID3v1 tag exists and read it
 Status read_id3v1_tag(const char *filepath, ID3v1_Tag *tag);
 Status write_id3v1_tag(const char *filepath, const ID3v1_Tag *tag);
+Status remove_id3v1_tag(const char *filepath);
 
 #endif // ID3_V1_H

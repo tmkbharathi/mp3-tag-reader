@@ -21,10 +21,12 @@ Status read_id3_tags(const char *filepath) {
   if (mpeg_info.bitrate > 0) {
     int min = (int)mpeg_info.duration / 60;
     int sec = (int)mpeg_info.duration % 60;
-    printf("Tine: %02d:%02d, %s, %s, %d kb/s, %d Hz, %s\n", min, sec,
+    printf("Time: %02d:%02d  %s  %s  %d kb/s  %d Hz  %s\n", min, sec,
            mpeg_info.version, mpeg_info.layer, mpeg_info.bitrate,
            mpeg_info.sample_rate, mpeg_info.mode);
   }
+
+  printf("------------------------------------------------------------\n");
 
   // Line 4: id3 version
   ID3v2_Content v2_content;
@@ -36,30 +38,43 @@ Status read_id3_tags(const char *filepath) {
   Status v1_status = read_id3v1_tag(filepath, &v1_tag);
 
   if (v2_status == SUCCESS) {
-    printf("ID3 v2.3:\n");
+    printf("ID3 v2.%d:\n", v2_content.major_version);
     // Line 5: title, artist
-    printf("title: %s, artist: %s\n", v2_content.title ? v2_content.title : "",
+    printf("title: %s       artist: %s\n",
+           v2_content.title ? v2_content.title : "",
            v2_content.artist ? v2_content.artist : "");
 
     // Line 6: album, year (conditionally show year)
-    printf("albun: %s", v2_content.album ? v2_content.album : "");
+    printf("album: %s", v2_content.album ? v2_content.album : "");
     if (v2_content.year)
-      printf(", year: %s", v2_content.year);
+      printf("  year: %s", v2_content.year);
     printf("\n");
 
     // Line 7: track, genre (conditionally show track)
     if (v2_content.track)
-      printf("track: %s, ", v2_content.track);
+      printf("track: %s   ", v2_content.track);
     printf("genre: %s\n", v2_content.genre ? v2_content.genre : "");
+
+    // Image details if present
+    if (v2_content.image.size > 0) {
+      printf("Image: [Type: %d] [Mime: %s] [Size: %u bytes]\n",
+             v2_content.image.type,
+             v2_content.image.mime_type ? v2_content.image.mime_type
+                                        : "unknown",
+             v2_content.image.size);
+      if (v2_content.image.description &&
+          strlen(v2_content.image.description) > 0)
+        printf("       Description: %s\n", v2_content.image.description);
+    }
 
     // Line 8: comment
     if (v2_content.comment) {
       if (v2_content.comment_desc || v2_content.lang) {
-        printf("Connent: [Description: %s] [Lang: %s]\n",
+        printf("Comment: [Description: %s] [Lang: %s]\n",
                v2_content.comment_desc ? v2_content.comment_desc : "",
                v2_content.lang ? v2_content.lang : "");
       } else {
-        printf("Connent: \n");
+        printf("Comment: \n");
       }
       printf("%s\n", v2_content.comment);
     }
@@ -73,8 +88,6 @@ Status read_id3_tags(const char *filepath) {
   } else {
     printf("No ID3 tags found.\n");
   }
-
-  printf("------------------------------------------------------------\n");
   return SUCCESS;
 }
 
@@ -82,66 +95,48 @@ Status update_id3_tags(const char *filepath, const TagUpdate *update) {
   printf("Updating tags for file: %s\n", filepath);
   printf("----------------------------------------\n");
 
+  // Update ID3v1
   ID3v1_Tag tag;
   memset(&tag, 0, sizeof(ID3v1_Tag));
+  Status v1_read = read_id3v1_tag(filepath, &tag);
 
-  // Try to read existing tag
-  Status status = read_id3v1_tag(filepath, &tag);
-  if (status != SUCCESS && status != ERROR_TAG_NOT_FOUND) {
-    printf("Error: Could not access file or file error.\n");
-    return status;
-  }
-
-  if (status == ERROR_TAG_NOT_FOUND) {
-    printf("No existing ID3v1 tag found. Creating new one.\n");
-    // tag is already zeroed.
-    // Set default genre to 255 (undefined) if new?
-    // Or 12 (Other)? Spec says 12 is 'Other'.
-    tag.genre = 12;
-  }
-
-  // Update fields if provided
-  if (update->title) {
-    strncpy(tag.title, update->title, 30);
-    printf("  Set Title: %s\n", update->title);
-  }
-  if (update->artist) {
-    strncpy(tag.artist, update->artist, 30);
-    printf("  Set Artist: %s\n", update->artist);
-  }
-  if (update->album) {
-    strncpy(tag.album, update->album, 30);
-    printf("  Set Album: %s\n", update->album);
-  }
-  if (update->year) {
-    strncpy(tag.year, update->year, 4);
-    printf("  Set Year: %s\n", update->year);
-  }
-  if (update->comment) {
-    strncpy(tag.comment, update->comment, 30);
-    printf("  Set Comment: %s\n", update->comment);
-  }
-  if (update->genre) {
-    // Basic parsing: if number, use it. If string, simple mapping or default.
-    // For now, assume integer input for simplicity or default 12.
-    // TODO: Implement string-to-genre mapping.
-    int g = atoi(update->genre);
-    if (g >= 0 && g <= 255) {
-      tag.genre = (uint8_t)g;
-      printf("  Set Genre ID: %d\n", g);
-    } else {
-      printf("  Warning: Invalid genre ID '%s'. Ignored.\n", update->genre);
+  if (v1_read == SUCCESS || v1_read == ERROR_TAG_NOT_FOUND) {
+    if (v1_read == ERROR_TAG_NOT_FOUND) {
+      tag.genre = 12; // Other
     }
+    if (update->title)
+      strncpy(tag.title, update->title, 30);
+    if (update->artist)
+      strncpy(tag.artist, update->artist, 30);
+    if (update->album)
+      strncpy(tag.album, update->album, 30);
+    if (update->year)
+      strncpy(tag.year, update->year, 4);
+    if (update->comment)
+      strncpy(tag.comment, update->comment, 30);
+    if (update->genre)
+      tag.genre = (uint8_t)atoi(update->genre);
+
+    write_id3v1_tag(filepath, &tag);
+    printf("  ID3v1 updated.\n");
   }
 
-  // Write back
-  Status write_status = write_id3v1_tag(filepath, &tag);
-  if (write_status == SUCCESS) {
-    printf("Tags updated successfully.\n");
+  // Update ID3v2
+  Status v2_write = write_id3v2_tag(filepath, update);
+  if (v2_write == SUCCESS) {
+    printf("  ID3v2 updated successfully.\n");
   } else {
-    printf("Error writing tags.\n");
+    printf("  Error updating ID3v2: %d\n", v2_write);
   }
 
   printf("----------------------------------------\n");
-  return write_status;
+  return v2_write;
+}
+
+Status delete_id3_tags(const char *filepath) {
+  printf("Deleting tags from: %s\n", filepath);
+  remove_id3v1_tag(filepath);
+  remove_id3v2_tag(filepath);
+  printf("Tags deleted.\n");
+  return SUCCESS;
 }

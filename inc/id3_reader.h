@@ -5,5 +5,6 @@
 
 Status read_id3_tags(const char *filepath);
 Status update_id3_tags(const char *filepath, const TagUpdate *update);
+Status delete_id3_tags(const char *filepath);
 
 #endif // ID3_READER_H

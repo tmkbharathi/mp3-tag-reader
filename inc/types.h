@@ -8,7 +8,8 @@ typedef enum {
   ERROR_FILE_OPEN,
   ERROR_INVALID_FORMAT,
   ERROR_MEM_ALLOC,
-  ERROR_TAG_NOT_FOUND
+  ERROR_TAG_NOT_FOUND,
+  ERROR_WRITE_FAILED
 } Status;
 
 typedef struct {

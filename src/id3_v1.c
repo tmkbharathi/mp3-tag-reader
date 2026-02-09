@@ -111,3 +111,43 @@ Status write_id3v1_tag(const char *filepath, const ID3v1_Tag *tag) {
   fclose(fp);
   return SUCCESS;
 }
+
+Status remove_id3v1_tag(const char *filepath) {
+  FILE *fp = fopen(filepath, "r+b");
+  if (!fp)
+    return ERROR_FILE_OPEN;
+  fseek(fp, 0, SEEK_END);
+  long size = ftell(fp);
+  if (size < 128) {
+    fclose(fp);
+    return SUCCESS;
+  }
+  fseek(fp, -128, SEEK_END);
+  char hdr[3];
+  if (fread(hdr, 1, 3, fp) == 3 && strncmp(hdr, "TAG", 3) == 0) {
+    fclose(fp);
+    // On Windows, truncating is tricky with stdio.
+    // We'll use a simpler approach: recreate file without last 128 bytes if it
+    // has TAG.
+    char tmp[512];
+    sprintf(tmp, "%s.v1tmp", filepath);
+    FILE *fin = fopen(filepath, "rb");
+    FILE *fout = fopen(tmp, "wb");
+    unsigned char b[8192];
+    long to_copy = size - 128;
+    while (to_copy > 0) {
+      size_t r = fread(b, 1, to_copy > 8192 ? 8192 : to_copy, fin);
+      if (r <= 0)
+        break;
+      fwrite(b, 1, r, fout);
+      to_copy -= r;
+    }
+    fclose(fin);
+    fclose(fout);
+    remove(filepath);
+    rename(tmp, filepath);
+  } else {
+    fclose(fp);
+  }
+  return SUCCESS;
+}

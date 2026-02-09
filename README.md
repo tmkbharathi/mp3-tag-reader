@@ -20,6 +20,11 @@ To build the project:
 make
 ```
 
+To run automated tests:
+```bash
+make test
+```
+
 To clean build artifacts:
 ```bash
 make clean

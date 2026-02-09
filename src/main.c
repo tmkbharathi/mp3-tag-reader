@@ -1,4 +1,5 @@
 #include "../inc/id3_reader.h"
+#include "../inc/id3_v2.h"
 #include "../inc/types.h"
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +13,8 @@ void print_help(const char *program_name) {
   printf("  -y <year>     Modifies a Year tag\n");
   printf("  -c <comment>  Modifies a Comment tag\n");
   printf("  -g <genre>    Modifies a Genre tag\n");
+  printf("  -d, --delete-tag      Removes all ID3 tags from the file\n");
+  printf("  -e, --extract-image   Extracts album art to 'album_art.jpg/png'\n");
   printf("  -h, --help    Displays this help info\n");
   printf("  -v            Prints version info\n");
 }
@@ -42,8 +45,18 @@ int main(int argc, char *argv[]) {
   char *comment = NULL;
   char *genre = NULL;
 
+  int extract_image = 0;
+  int delete_tags = 0;
   int i;
   for (i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--delete-tag") == 0) {
+      delete_tags = 1;
+      continue;
+    }
+    if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--extract-image") == 0) {
+      extract_image = 1;
+      continue;
+    }
     if (argv[i][0] == '-') {
       // It's a flag
       char flag = argv[i][1];
@@ -110,6 +123,38 @@ int main(int argc, char *argv[]) {
     update.genre = genre;
 
     update_id3_tags(filepath, &update);
+  } else if (delete_tags) {
+    delete_id3_tags(filepath);
+  } else if (extract_image) {
+    ID3v2_Content content;
+    memset(&content, 0, sizeof(ID3v2_Content));
+    if (read_id3v2_tag(filepath, &content) == SUCCESS &&
+        content.image.size > 0) {
+      const char *ext = ".bin";
+      if (content.image.mime_type) {
+        if (strstr(content.image.mime_type, "jpeg") ||
+            strstr(content.image.mime_type, "jpg"))
+          ext = ".jpg";
+        else if (strstr(content.image.mime_type, "png"))
+          ext = ".png";
+      }
+
+      char out_name[64];
+      sprintf(out_name, "album_art%s", ext);
+
+      FILE *img = fopen(out_name, "wb");
+      if (img) {
+        fwrite(content.image.data, 1, content.image.size, img);
+        fclose(img);
+        printf("Album art extracted to '%s' (%u bytes)\n", out_name,
+               content.image.size);
+      } else {
+        printf("Error: Could not create output image file.\n");
+      }
+    } else {
+      printf("No embedded image found to extract.\n");
+    }
+    free_id3v2_content(&content);
   } else {
     // View mode
     read_id3_tags(filepath);
